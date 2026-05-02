@@ -80,6 +80,25 @@ def index():
     
     return render_template("index.html", result_image=None, original_image=None, items=[])
 
+# Tambahkan ini di bagian route app.py
+@app.route("/cron/cleanup", methods=["GET"])
+def cron_cleanup():
+    # Ambil API Key dari .env untuk keamanan
+    cron_key = os.getenv("CRON_SECRET_KEY")
+    auth_key = request.args.get("key")
+
+    # Validasi: Hanya jalankan jika key sesuai
+    if auth_key != cron_key:
+        return "Unauthorized", 403
+
+    try:
+        # Jalankan fungsi pembersihan yang sudah kita buat sebelumnya
+        manage_storage(app.config['UPLOAD_FOLDER'])
+        manage_storage(app.config['RESULT_FOLDER'])
+        return "Cleanup Success", 200
+    except Exception as e:
+        return f"Cleanup Failed: {str(e)}", 500
+
 if __name__ == "__main__":
     env = os.getenv("ENV", "development")
 
