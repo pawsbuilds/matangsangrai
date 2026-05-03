@@ -25,4 +25,4 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          huggingface-cli upload pawsbuilds/matangsangrai . . --repo-type space --token $HF_TOKEN
+          hf upload pawsbuilds/matangsangrai . . --repo-type space
