@@ -21,19 +21,24 @@ for folder in [UPLOAD_FOLDER, RESULT_FOLDER]:
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['RESULT_FOLDER'] = RESULT_FOLDER
 
-MODEL_PATH = ("models/best.pt")
-model = YOLO(MODEL_PATH)
+MODEL_PATH = os.getenv("MODEL_PATH", "models/best.pt")
+try:
+    model = YOLO(MODEL_PATH)
+    print(f"Berhasil load model: {MODEL_PATH}")
+except Exception as e:
+    print(f"FATAL: Gagal load model di {MODEL_PATH}. Error: {e}")
 
 def manage_storage(folder_path):
     files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) 
-             if os.path.isfile(os.path.join(folder_path, f))]
+             if os.path.isfile(os.path.join(folder_path, f)) and not f.startswith('.')]
     files.sort(key=os.path.getmtime)
     while len(files) > MAX_FILES:
         oldest_file = files.pop(0)
         try:
             os.remove(oldest_file)
+            print(f"Cleanup: Menghapus {oldest_file}")
         except Exception as e:
-            print(f"Gagal menghapus {oldest_file}: {e}")
+            print(f"Error Cleanup: Gagal menghapus {oldest_file}: {e}")
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -80,19 +85,15 @@ def index():
     
     return render_template("index.html", result_image=None, original_image=None, items=[])
 
-# Tambahkan ini di bagian route app.py
 @app.route("/cron/cleanup", methods=["GET"])
 def cron_cleanup():
-    # Ambil API Key dari .env untuk keamanan
     cron_key = os.getenv("CRON_SECRET_KEY")
     auth_key = request.args.get("key")
 
-    # Validasi: Hanya jalankan jika key sesuai
-    if auth_key != cron_key:
+    if not cron_key or auth_key != cron_key:
         return "Unauthorized", 403
 
     try:
-        # Jalankan fungsi pembersihan yang sudah kita buat sebelumnya
         manage_storage(app.config['UPLOAD_FOLDER'])
         manage_storage(app.config['RESULT_FOLDER'])
         return "Cleanup Success", 200
@@ -100,22 +101,9 @@ def cron_cleanup():
         return f"Cleanup Failed: {str(e)}", 500
 
 if __name__ == "__main__":
-    env = os.getenv("ENV", "development")
+    from waitress import serve
+    
+    port = int(os.environ.get("PORT", 7860))
 
-    if env == "production":
-        from waitress import serve
-        print("MatangSangrai running on PRODUCTION (Waitress Port 5000)")
-        serve(app, host='0.0.0.0', port=5000)
-
-    else:
-        try:
-            from livereload import Server
-            print("Running on DEVELOPMENT (LiveReload)")
-            server = Server(app.wsgi_app)
-            server.watch('static/css/*.css')
-            server.watch('static/js/*.js')
-            server.watch('templates/*.html')
-            server.serve(port=5000, debug=True)
-        except ImportError:
-            print("Running on DEVELOPMENT (Standard Flask)")
-            app.run(debug=True, port=5000)
+    print(f"Server MatangSangrai aktif di port {port}")
+    serve(app, host='0.0.0.0', port=port)
