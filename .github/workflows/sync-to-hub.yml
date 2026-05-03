@@ -11,9 +11,18 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0
-          lfs: true
-      - name: Push to hub
+          fetch-depth: 1
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install Hugging Face CLI
+        run: pip install huggingface_hub
+        
+      - name: Push to Hub using CLI
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: git push --force https://pawsbuilds:$HF_TOKEN@huggingface.co/spaces/pawsbuilds/matangsangrai master
+        run: |
+          huggingface-cli upload pawsbuilds/matangsangrai . . --repo-type space --token $HF_TOKEN
