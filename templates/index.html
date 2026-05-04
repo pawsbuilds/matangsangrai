@@ -380,7 +380,7 @@
                             </svg>
                             <div class="text-center">
                                 <p class="text-xl font-bold text-black mb-1">Pilih Foto Biji Kopi</p>
-                                <p class="text-sm text-gray-400">JPG, PNG hingga 10MB</p>
+                                <p class="text-sm text-gray-400">JPG, JPEG, PNG, WEBP hingga 15MB</p>
                             </div>
                         </div>
                     </div>
@@ -505,7 +505,7 @@
 
     <script>
 
-        const detectedItems = {{ items | tojson if items is not none else '[]' }};
+        const detectedItems = {{ items | tojson | safe }};
 
         const COFFEE_CONFIG = {
             beanImages: [
@@ -699,12 +699,14 @@
             Navigation.init();
             AnalyzerApp.init();
 
-            if (detectedItems.length >= 0 && document.getElementById('result-container')) {
-                const resultElement = document.getElementById('result-container');
-                if (!resultElement.classList.contains('hidden')) {
-                    resultElement.scrollIntoView({ behavior: 'smooth' });
-                }
+            {% if result_image %}
+            const resultElement = document.getElementById('result-container');
+            if (resultElement) {
+                setTimeout(() => {
+                    resultElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
             }
+            {% endif %}
         });
 
         window.closeModal = () => AnalyzerApp.closeModal();

@@ -14,12 +14,19 @@ UPLOAD_FOLDER = os.path.join('static', 'uploads')
 RESULT_FOLDER = os.path.join('static', 'results')
 MAX_FILES = int(os.getenv("MAX_FILES", 10))
 
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 for folder in [UPLOAD_FOLDER, RESULT_FOLDER]:
     if not os.path.exists(folder):
         os.makedirs(folder)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['RESULT_FOLDER'] = RESULT_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024
 
 MODEL_PATH = os.getenv("MODEL_PATH", "models/best.pt")
 try:
@@ -44,7 +51,7 @@ def manage_storage(folder_path):
 def index():
     if request.method == "POST":
         file = request.files.get('file')        
-        if file and file.filename != '':
+        if file and file.filename != '' and allowed_file(file.filename):
             ext = os.path.splitext(file.filename)[1]
             unique_name = f"{uuid.uuid4().hex[:8]}{ext}"
             
@@ -67,22 +74,11 @@ def index():
                 class_ids = results[0].boxes.cls.cpu().tolist()
                 items = list(set([results[0].names[int(id)] for id in class_ids]))
 
-            session['result_data'] = {
-                'result_image' : f"results/{result_filename}",
-                'original_image' : f"uploads/{unique_name}",
-                'items' : items
-            }
-
             manage_storage(app.config['UPLOAD_FOLDER'])
             manage_storage(app.config['RESULT_FOLDER'])
 
-            return redirect(url_for('index'))
-    
-    data = session.pop('result_data', None)
+            return render_template("index.html", result_image=f"results/{result_filename}", original_image=f"uploads/{unique_name}", items=items)
 
-    if data:
-        return render_template("index.html", result_image=data['result_image'], original_image=data['original_image'], items=data['items'])
-    
     return render_template("index.html", result_image=None, original_image=None, items=[])
 
 @app.route("/cron/cleanup", methods=["GET"])
