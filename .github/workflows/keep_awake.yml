@@ -1,0 +1,14 @@
+name: Keep MatangSangrai Awake
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit Cleanup Endpoint
+        run: |
+          curl -I "https://huggingface.co/spaces/pawsbuilds/matangsangrai/cron/cleanup?key=${{ secrets.CRON_SECRET_KEY }}"
