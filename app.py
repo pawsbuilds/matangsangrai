@@ -51,33 +51,39 @@ def manage_storage(folder_path):
 def index():
     if request.method == "POST":
         file = request.files.get('file')        
-        if file and file.filename != '' and allowed_file(file.filename):
-            ext = os.path.splitext(file.filename)[1]
-            unique_name = f"{uuid.uuid4().hex[:8]}{ext}"
-            
-            img_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
-            file.save(img_path)
+        if not file or file.filename == '' or not allowed_file(file.filename):
+            return render_template("index.html", 
+                                 result_image=None, 
+                                 items=[], 
+                                 error_msg="Format file tidak didukung! Gunakan JPG, PNG, atau WEBP.")
 
-            results = model.predict(
-                source=img_path, 
-                save=False, 
-                conf=0.25
-            )
 
-            res_plotted = results[0].plot()
-            result_filename = f"result_{unique_name.split('.')[0]}.jpg"
-            result_save_path = os.path.join(app.config['RESULT_FOLDER'], result_filename)
-            cv2.imwrite(result_save_path, res_plotted)
+        ext = os.path.splitext(file.filename)[1]
+        unique_name = f"{uuid.uuid4().hex[:8]}{ext}"
+        
+        img_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
+        file.save(img_path)
 
-            items = []
-            if len(results[0].boxes) > 0:
-                class_ids = results[0].boxes.cls.cpu().tolist()
-                items = list(set([results[0].names[int(id)] for id in class_ids]))
+        results = model.predict(
+            source=img_path, 
+            save=False, 
+            conf=0.25
+        )
 
-            manage_storage(app.config['UPLOAD_FOLDER'])
-            manage_storage(app.config['RESULT_FOLDER'])
+        res_plotted = results[0].plot()
+        result_filename = f"result_{unique_name.split('.')[0]}.jpg"
+        result_save_path = os.path.join(app.config['RESULT_FOLDER'], result_filename)
+        cv2.imwrite(result_save_path, res_plotted)
 
-            return render_template("index.html", result_image=f"results/{result_filename}", original_image=f"uploads/{unique_name}", items=items)
+        items = []
+        if len(results[0].boxes) > 0:
+            class_ids = results[0].boxes.cls.cpu().tolist()
+            items = list(set([results[0].names[int(id)] for id in class_ids]))
+
+        manage_storage(app.config['UPLOAD_FOLDER'])
+        manage_storage(app.config['RESULT_FOLDER'])
+
+        return render_template("index.html", result_image=f"results/{result_filename}", original_image=f"uploads/{unique_name}", items=items)
 
     return render_template("index.html", result_image=None, original_image=None, items=[])
 
@@ -95,6 +101,13 @@ def cron_cleanup():
         return "Cleanup Success", 200
     except Exception as e:
         return f"Cleanup Failed: {str(e)}", 500
+    
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return render_template("index.html", 
+                         result_image=None, 
+                         items=[], 
+                         error_msg="Ukuran file terlalu besar! Maksimal adalah 15MB."), 413
 
 if __name__ == "__main__":
     from waitress import serve

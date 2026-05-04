@@ -72,8 +72,8 @@
 
         .text-apple-glow {
             text-shadow:
-                0 0 30px rgba(244, 255, 255, 0.9),
-                0 0 15px rgba(255, 255, 255, 0.7);
+                0 0 20px rgba(244, 255, 255, 0.7),
+                0 0 10px rgba(255, 255, 255, 0.5);
         }
 
         .flip-card {
@@ -181,10 +181,10 @@
         </div>
         
         <div class="relative z-10">
-            <h1 class="text-6xl md:text-9xl font-bold tracking-tighter mb-4 text-apple-glow">
+            <h1 class="text-5xl md:text-9xl font-bold tracking-tighter mb-4 text-apple-glow">
             MatangSangrai.
             </h1>
-            <p class="text-xl md:text-xl font-medium text-gray-800 max-w-xl leading-relaxed text-apple-glow mx-auto">
+            <p class="text-lg md:text-xl font-medium text-gray-800 max-w-xl leading-relaxed text-apple-glow mx-auto">
             Bukan sekadar tebak-tebakan warna, ini analisis data.
             </p>
             <div class="mt-10 flex items-center justify-center gap-6">
@@ -485,14 +485,14 @@
     <div id="custom-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
         <div class="bg-white rounded-[32px] p-8 max-w-sm w-full mx-4 shadow-2xl border border-gray-100 animate-modal">
             <div class="text-center">
-                <div class="text-4xl mb-4">⚠️</div>
+                <div id="modal-icon" class="text-4xl mb-4">⚠️</div>
                 <h3 id="modal-title" class="text-xl font-bold text-black mb-2">Konfirmasi</h3>
                 <p id="modal-message" class="text-gray-500 text-sm leading-relaxed mb-8">
-                    Anda yakin ingin melakukan tindakan ini?
+                    Pesan akan berubah secara dinamis lewat JS.
                 </p>
                 
                 <div class="flex space-x-3">
-                    <button onclick="closeModal()" class="flex-1 px-6 py-3 rounded-full bg-gray-100 text-gray-600 font-bold text-sm hover:bg-gray-200 transition">
+                    <button id="modal-cancel-btn" onclick="closeModal()" class="flex-1 px-6 py-3 rounded-full bg-gray-100 text-gray-600 font-bold text-sm hover:bg-gray-200 transition">
                         Batal
                     </button>
                     <button id="modal-confirm-btn" class="flex-1 px-6 py-3 rounded-full bg-black text-white font-bold text-sm hover:opacity-80 transition">
@@ -533,18 +533,21 @@
             init() {
                 const container = document.getElementById('coffee-container');
                 if (!container) return;
+                const isMobile = window.innerWidth < 768;
+                const beanCount = isMobile ? 12 : 30;
 
-                for (let i = 0; i < 30; i++) {
+                for (let i = 0; i < beanCount; i++) {
                     const img = document.createElement('img');
                     img.src = COFFEE_CONFIG.beanImages[Math.floor(Math.random() * COFFEE_CONFIG.beanImages.length)];
                     img.className = "absolute opacity-100 max-w-none animate-float pointer-events-none";
+
+                    size = Math.random() * 350 + 150;
+                    img.style.width = `${size}px`;
                     
                     const leftPos = (i % 3 === 0) ? Math.random() * 33 : (i % 3 === 1) ? 33 + Math.random() * 33 : 66 + Math.random() * 33;
                     img.style.left = `${leftPos + (Math.random() * 10 - 5)}%`;
                     img.style.top = `${(Math.random() * 180) - 20}vh`;
                     
-                    const size = Math.random() * 400 + 100;
-                    img.style.width = `${size}px`;
                     img.style.animationDelay = `${Math.random() * 5}s`;
 
                     container.appendChild(img);
@@ -607,7 +610,8 @@
                 modal: document.getElementById('custom-modal'),
                 modalTitle: document.getElementById('modal-title'),
                 modalMessage: document.getElementById('modal-message'),
-                modalConfirmBtn: document.getElementById('modal-confirm-btn')
+                modalConfirmBtn: document.getElementById('modal-confirm-btn'),
+                modalCancelBtn: document.getElementById('modal-cancel-btn')
             },
 
             init() {
@@ -628,20 +632,61 @@
                 if (!this.elements.fileInput) return;
 
                 this.elements.fileInput.addEventListener('change', () => {
-                    if (this.elements.fileInput.files.length > 0) {
-                        this.elements.fileInput.style.pointerEvents = 'none';
-                        this.elements.uploadForm.submit();
+                    const file = this.elements.fileInput.files[0];
+                    if (!file) return;
+
+                    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+                    const extension = file.name.split('.').pop().toLowerCase();
+                    const maxSize = 15 * 1024 * 1024;
+
+                    if (!allowedExtensions.includes(extension)) {
+                        this.showAlert(
+                            "Format Tidak Sesuai", 
+                            `File .${extension} tidak didukung. Harap gunakan format JPG, PNG, atau WEBP.`
+                        );
+                        this.elements.fileInput.value = '';
+                        return;
                     }
+
+                    if (file.size > maxSize) {
+                        this.showAlert(
+                            "File Terlalu Besar", 
+                            "Ukuran foto maksimal adalah 15MB. Silakan kompres fotonya dulu."
+                        );
+                        this.elements.fileInput.value = '';
+                        return;
+                    }
+
+                    this.elements.fileInput.style.pointerEvents = 'none';
+                    this.elements.uploadForm.submit();
                 });
             },
 
             showConfirm(title, message, onConfirm) {
                 this.elements.modalTitle.innerText = title;
                 this.elements.modalMessage.innerText = message;
+                if (this.elements.modalCancelBtn) this.elements.modalCancelBtn.classList.remove('hidden');
+                
                 this.elements.modal.classList.remove('hidden');
+                this.elements.modalConfirmBtn.innerText = "Ya, Lanjut";
                 this.elements.modalConfirmBtn.onclick = () => {
                     onConfirm();
                     this.closeModal();
+                };
+            },
+
+            showAlert(title, message) {
+                this.elements.modalTitle.innerText = title;
+                this.elements.modalMessage.innerText = message;
+                
+                if (this.elements.modalCancelBtn) this.elements.modalCancelBtn.classList.add('hidden');
+                
+                this.elements.modal.classList.remove('hidden');
+                this.elements.modalConfirmBtn.innerText = "Oke, Mengerti";
+                
+                this.elements.modalConfirmBtn.onclick = () => {
+                    this.closeModal();
+                    if (this.elements.modalCancelBtn) this.elements.modalCancelBtn.classList.remove('hidden');
                 };
             },
 
@@ -699,12 +744,17 @@
             Navigation.init();
             AnalyzerApp.init();
 
+            const serverError = "{{ error_msg | safe if error_msg else '' }}";
+            if (serverError) {
+                AnalyzerApp.showAlert("Peringatan Sistem", serverError);
+            }
+
             {% if result_image %}
             const resultElement = document.getElementById('result-container');
             if (resultElement) {
                 setTimeout(() => {
                     resultElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 100);
+                }, 150);
             }
             {% endif %}
         });
