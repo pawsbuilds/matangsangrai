@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev_key_do_not_use_in_prod")
+app.secret_key = os.getenv("FLASK_SECRET_KEY")
 
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
 RESULT_FOLDER = os.path.join('static', 'results')
